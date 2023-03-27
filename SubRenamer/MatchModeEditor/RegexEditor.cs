@@ -1,14 +1,7 @@
 ﻿using SubRenamer.Lib;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
-using System.Drawing;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using static SubRenamer.Global;
 
@@ -16,29 +9,31 @@ namespace SubRenamer.MatchModeEditor
 {
     public partial class RegexEditor : Form
     {
-        private MainForm mainForm;
+        private readonly MainForm _mainForm;
 
         public RegexEditor(MainForm mainForm)
         {
-            this.mainForm = mainForm;
+            _mainForm = mainForm;
             InitializeComponent();
         }
 
         private void RegexEditor_Load(object sender, EventArgs e)
         {
-            if (mainForm.M_Regx_V != null)
-                VideoRegex.Text = mainForm.M_Regx_V.ToString();
-            if (mainForm.M_Regx_S != null)
-                SubRegex.Text = mainForm.M_Regx_S.ToString();
+            if (_mainForm.MRegxV != null)
+                VideoRegex.Text = _mainForm.MRegxV.ToString();
+            if (_mainForm.MRegxS != null)
+                SubRegex.Text = _mainForm.MRegxS.ToString();
 
-            V_Test_OpenBtn.Click += (s1, e1) => {
+            V_Test_OpenBtn.Click += (_, _) =>
+            {
                 Utils.OpenFile(AppFileType.Video, opened: (fileName, fileType) =>
                 {
                     V_TestStr.Text = fileName;
                     TestStrRematch(fileType);
                 });
             };
-            S_Test_OpenBtn.Click += (s1, e1) => {
+            S_Test_OpenBtn.Click += (_, _) =>
+            {
                 Utils.OpenFile(AppFileType.Sub, opened: (fileName, fileType) =>
                 {
                     S_TestStr.Text = fileName;
@@ -46,17 +41,20 @@ namespace SubRenamer.MatchModeEditor
                 });
             };
 
-            VideoRegex.TextChanged += (s1, e1) => TestStrRematch(AppFileType.Video, false);
-            SubRegex.TextChanged += (s1, e1) => TestStrRematch(AppFileType.Sub, false);
-            V_TestStr.TextChanged += (s1, e1) => TestStrRematch(AppFileType.Video, false);
-            S_TestStr.TextChanged += (s1, e1) => TestStrRematch(AppFileType.Sub, false);
+            VideoRegex.TextChanged += (_, _) => TestStrRematch(AppFileType.Video, false);
+            SubRegex.TextChanged += (_, _) => TestStrRematch(AppFileType.Sub, false);
+            V_TestStr.TextChanged += (_, _) => TestStrRematch(AppFileType.Video, false);
+            S_TestStr.TextChanged += (_, _) => TestStrRematch(AppFileType.Sub, false);
         }
 
-        private Regex GetRegexInstance(AppFileType FileType, bool displayAlert = true)
+        private Regex GetRegexInstance(AppFileType fileType, bool displayAlert = true)
         {
-            string regxStr = "";
-            if (FileType == AppFileType.Video) regxStr = VideoRegex.Text;
-            else if (FileType == AppFileType.Sub) regxStr = SubRegex.Text;
+            var regxStr = fileType switch
+            {
+                AppFileType.Video => VideoRegex.Text,
+                AppFileType.Sub => SubRegex.Text,
+                _ => ""
+            };
 
             if (string.IsNullOrWhiteSpace(regxStr)) return null;
 
@@ -69,10 +67,14 @@ namespace SubRenamer.MatchModeEditor
             {
                 if (displayAlert)
                 {
-                    var label = "";
-                    if (FileType == AppFileType.Video) label = "视频";
-                    else if (FileType == AppFileType.Sub) label = "字幕";
-                    MessageBox.Show($"{label} 正则语法有误 {ex.Message}{Environment.NewLine}{ex.StackTrace}", "正则语法错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    var label = fileType switch
+                    {
+                        AppFileType.Video => "视频",
+                        AppFileType.Sub => "字幕",
+                        _ => ""
+                    };
+                    MessageBox.Show($@"{label} 正则语法有误 {ex.Message}{Environment.NewLine}{ex.StackTrace}", @"正则语法错误",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
 
@@ -81,8 +83,8 @@ namespace SubRenamer.MatchModeEditor
 
         private void SaveBtn_Click(object sender, EventArgs e)
         {
-            mainForm.M_Regx_V = GetRegexInstance(AppFileType.Video);
-            mainForm.M_Regx_S = GetRegexInstance(AppFileType.Sub);
+            _mainForm.MRegxV = GetRegexInstance(AppFileType.Video);
+            _mainForm.MRegxS = GetRegexInstance(AppFileType.Sub);
 
             Close();
         }
@@ -92,16 +94,19 @@ namespace SubRenamer.MatchModeEditor
             Close();
         }
 
-        private void TestStrRematch(AppFileType FileType, bool displayAlert = true)
+        private void TestStrRematch(AppFileType fileType, bool displayAlert = true)
         {
-            Regex regex = GetRegexInstance(FileType, displayAlert);
-            if (FileType == AppFileType.Video)
+            var regex = GetRegexInstance(fileType, displayAlert);
+            switch (fileType)
             {
-                V_TestResult.Text = MainForm.GetMatchKeyByRegex(V_TestStr.Text.Trim(), regex);
-            }
-            else if (FileType == AppFileType.Sub)
-            {
-                S_TestResult.Text = MainForm.GetMatchKeyByRegex(S_TestStr.Text.Trim(), regex);
+                case AppFileType.Video:
+                    V_TestResult.Text = MainForm.GetMatchKeyByRegex(V_TestStr.Text.Trim(), regex);
+                    break;
+                case AppFileType.Sub:
+                    S_TestResult.Text = MainForm.GetMatchKeyByRegex(S_TestStr.Text.Trim(), regex);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(fileType), fileType, null);
             }
         }
 

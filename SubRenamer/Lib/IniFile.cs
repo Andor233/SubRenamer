@@ -1,55 +1,54 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+﻿using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SubRenamer.Lib
 {
-    public class IniFile
+    public partial class IniFile
     {
-        string Path;
-        public static string APP_NAME = Assembly.GetExecutingAssembly().GetName().Name;
+        private readonly string _path;
+        private static readonly string AppName = Assembly.GetExecutingAssembly().GetName().Name;
 
-        [DllImport("kernel32", CharSet = CharSet.Ansi)]
-        static extern long WritePrivateProfileString(string Section, string Key, string Value, string FilePath);
 
-        [DllImport("kernel32", CharSet = CharSet.Ansi)]
-        static extern int GetPrivateProfileString(string Section, string Key, string Default, StringBuilder RetVal, int Size, string FilePath);
+        [DllImport("kernel32", CharSet = CharSet.Unicode)]
+        private static extern long WritePrivateProfileString(string section, string key, string value,
+            string filePath);
 
-        public IniFile(string IniPath = null)
+        [DllImport("kernel32", CharSet = CharSet.Unicode)]
+        private static extern int GetPrivateProfileString(string section, string key, string @default,
+            StringBuilder retVal, int size, string filePath);
+
+        public IniFile(string iniPath = null)
         {
-            Path = new FileInfo(IniPath ?? APP_NAME + ".ini").FullName.ToString();
+            _path = new FileInfo(iniPath ?? AppName + ".ini").FullName.ToString();
         }
 
-        public string Read(string Key, string DefaultVal = "", string Section = null)
+        public string Read(string key, string defaultVal = "", string section = null)
         {
-            var RetVal = new StringBuilder(255);
-            GetPrivateProfileString(Section ?? APP_NAME, Key, DefaultVal, RetVal, 255, Path);
-            return RetVal.ToString();
+            var retVal = new StringBuilder(255);
+            GetPrivateProfileString(section ?? AppName, key, defaultVal, retVal, 255, _path);
+            return retVal.ToString();
         }
 
-        public void Write(string Key, string Value, string Section = null)
+        public void Write(string key, string value, string section = null)
         {
-            WritePrivateProfileString(Section ?? APP_NAME, Key, Value, Path);
+            WritePrivateProfileString(section ?? AppName, key, value, _path);
         }
 
-        public void DeleteKey(string Key, string Section = null)
+        public void DeleteKey(string key, string section = null)
         {
-            Write(Key, null, Section ?? APP_NAME);
+            Write(key, null, section ?? AppName);
         }
 
-        public void DeleteSection(string Section = null)
+        public void DeleteSection(string section = null)
         {
-            Write(null, null, Section ?? APP_NAME);
+            Write(null, null, section ?? AppName);
         }
 
-        public bool KeyExists(string Key, string Section = null)
+        public bool KeyExists(string key, string section = null)
         {
-            return Read(Key, Section).Length > 0;
+            return Read(key, section).Length > 0;
         }
     }
 }

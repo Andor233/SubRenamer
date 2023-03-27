@@ -1,15 +1,5 @@
-﻿using Microsoft.WindowsAPICodePack.Dialogs;
-using SubRenamer.Lib;
+﻿using SubRenamer.Lib;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Diagnostics;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using static SubRenamer.Global;
 
@@ -19,68 +9,68 @@ namespace SubRenamer.MatchModeEditor
     {
         private static readonly string MatchSign = "<X>".ToUpper();
 
-        private static string V_Raw = null;
-        private static string S_Raw = null;
+        private static string _vRaw;
+        private static string _sRaw;
 
-        private string V_Begin = null;
-        private string V_End = null;
+        private string _vBegin;
+        private string _vEnd;
 
-        private string S_Begin = null;
-        private string S_End = null;
+        private string _sBegin;
+        private string _sEnd;
 
-        private MainForm mainForm;
+        private readonly MainForm _mainForm;
 
         public ManuEditor(MainForm mainForm)
         {
-            this.mainForm = mainForm;
+            _mainForm = mainForm;
             InitializeComponent();
         }
 
         private void ManuEditor_Load(object sender, EventArgs e)
         {
-            V_Tpl.TextChanged += (s1, e1) => { MatchRuleUpdated(AppFileType.Video); };
-            S_Tpl.TextChanged += (s1, e1) => { MatchRuleUpdated(AppFileType.Sub); };
+            V_Tpl.TextChanged += (_, _) => { MatchRuleUpdated(AppFileType.Video); };
+            S_Tpl.TextChanged += (_, _) => { MatchRuleUpdated(AppFileType.Sub); };
 
-            V_OpenBtn.Click += (s1, e1) => {
-                Utils.OpenFile(AppFileType.Video, opened: (fileName, fileType) =>
+            V_OpenBtn.Click += (_, _) =>
+            {
+                Utils.OpenFile(AppFileType.Video, opened: (fileName, _) =>
                 {
-                    V_Raw = fileName;
+                    _vRaw = fileName;
                     V_Tpl.Text = fileName;
                     MatchRuleUpdated(AppFileType.Video);
                 });
             };
-            S_OpenBtn.Click += (s1, e1) => {
-                Utils.OpenFile(AppFileType.Sub, opened: (fileName, fileType) =>
+            S_OpenBtn.Click += (_, _) =>
+            {
+                Utils.OpenFile(AppFileType.Sub, opened: (fileName, _) =>
                 {
-                    S_Raw = fileName;
+                    _sRaw = fileName;
                     S_Tpl.Text = fileName;
                     MatchRuleUpdated(AppFileType.Sub);
                 });
             };
 
-            var M_V_Begin = mainForm.M_Manu_V_Begin;
-            var M_V_End = mainForm.M_Manu_V_End;
-            if (!string.IsNullOrWhiteSpace(M_V_Begin) && !string.IsNullOrWhiteSpace(M_V_End))
+            var mVBegin = _mainForm.MManuVBegin;
+            var mVEnd = _mainForm.MManuVEnd;
+            if (!string.IsNullOrWhiteSpace(mVBegin) && !string.IsNullOrWhiteSpace(mVEnd))
             {
-                V_Tpl.Text = $"{M_V_Begin}{MatchSign}{M_V_End}";
+                V_Tpl.Text = $@"{mVBegin}{MatchSign}{mVEnd}";
                 MatchRuleUpdated(AppFileType.Video);
             }
 
-            var M_S_Begin = mainForm.M_Manu_S_Begin;
-            var M_S_End = mainForm.M_Manu_S_End;
-            if (!string.IsNullOrWhiteSpace(M_S_Begin) && !string.IsNullOrWhiteSpace(M_S_End))
-            {
-                S_Tpl.Text = $"{M_S_Begin}{MatchSign}{M_S_End}";
-                MatchRuleUpdated(AppFileType.Sub);
-            }
+            var mSBegin = _mainForm.MManuSBegin;
+            var mSEnd = _mainForm.MManuSEnd;
+            if (string.IsNullOrWhiteSpace(mSBegin) || string.IsNullOrWhiteSpace(mSEnd)) return;
+            S_Tpl.Text = $@"{mSBegin}{MatchSign}{mSEnd}";
+            MatchRuleUpdated(AppFileType.Sub);
         }
 
         private void SaveBtn_Click(object sender, EventArgs e)
         {
-            mainForm.M_Manu_V_Begin = V_Begin;
-            mainForm.M_Manu_V_End = V_End;
-            mainForm.M_Manu_S_Begin = S_Begin;
-            mainForm.M_Manu_S_End = S_End;
+            _mainForm.MManuVBegin = _vBegin;
+            _mainForm.MManuVEnd = _vEnd;
+            _mainForm.MManuSBegin = _sBegin;
+            _mainForm.MManuSEnd = _sEnd;
             Close();
         }
 
@@ -89,39 +79,46 @@ namespace SubRenamer.MatchModeEditor
             Close();
         }
 
-        private void MatchRuleUpdated(AppFileType FileType)
+        private void MatchRuleUpdated(AppFileType fileType)
         {
-            if (FileType == AppFileType.Video)
+            switch (fileType)
             {
-                V_Begin = null;
-                V_End = null;
-                V_Matched.Text = "未匹配";
-                var tpl = V_Tpl.Text.Trim();
+                case AppFileType.Video:
+                {
+                    _vBegin = null;
+                    _vEnd = null;
+                    V_Matched.Text = @"未匹配";
+                    var tpl = V_Tpl.Text.Trim();
 
-                if (string.IsNullOrWhiteSpace(tpl)) return;
-                var pos = tpl.ToUpper().IndexOf(MatchSign);
-                if (pos <= -1) return;
-                var afterPos = pos + MatchSign.Length;
+                    if (string.IsNullOrWhiteSpace(tpl)) return;
+                    var pos = tpl.ToUpper().IndexOf(MatchSign, StringComparison.Ordinal);
+                    if (pos <= -1) return;
+                    var afterPos = pos + MatchSign.Length;
 
-                V_Begin = tpl.Substring(0, pos);
-                V_End = tpl.Substring(afterPos, tpl.Length - afterPos);
-                V_Matched.Text = "匹配结果: " + MainForm.GetMatchKeyByBeginEndStr(V_Raw, V_Begin, V_End);
-            }
-            else if (FileType == AppFileType.Sub)
-            {
-                S_Begin = null;
-                S_End = null;
-                S_Matched.Text = "未匹配";
-                var tpl = S_Tpl.Text.Trim();
+                    _vBegin = tpl[..pos];
+                    _vEnd = tpl.Substring(afterPos, tpl.Length - afterPos);
+                    V_Matched.Text = @"匹配结果: " + MainForm.GetMatchKeyByBeginEndStr(_vRaw, _vBegin, _vEnd);
+                    break;
+                }
+                case AppFileType.Sub:
+                {
+                    _sBegin = null;
+                    _sEnd = null;
+                    S_Matched.Text = @"未匹配";
+                    var tpl = S_Tpl.Text.Trim();
 
-                if (string.IsNullOrWhiteSpace(tpl)) return;
-                var pos = tpl.ToUpper().IndexOf(MatchSign);
-                if (pos <= -1) return;
-                var afterPos = pos + MatchSign.Length;
+                    if (string.IsNullOrWhiteSpace(tpl)) return;
+                    var pos = tpl.ToUpper().IndexOf(MatchSign, StringComparison.Ordinal);
+                    if (pos <= -1) return;
+                    var afterPos = pos + MatchSign.Length;
 
-                S_Begin = tpl.Substring(0, pos);
-                S_End = tpl.Substring(afterPos, tpl.Length - afterPos);
-                S_Matched.Text = "匹配结果: " + MainForm.GetMatchKeyByBeginEndStr(S_Raw, S_Begin, S_End);
+                    _sBegin = tpl[..pos];
+                    _sEnd = tpl.Substring(afterPos, tpl.Length - afterPos);
+                    S_Matched.Text = @"匹配结果: " + MainForm.GetMatchKeyByBeginEndStr(_sRaw, _sBegin, _sEnd);
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(fileType), fileType, null);
             }
         }
     }

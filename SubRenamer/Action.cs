@@ -1,17 +1,9 @@
-﻿using Microsoft.WindowsAPICodePack.Dialogs;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using static SubRenamer.Global;
@@ -20,7 +12,7 @@ namespace SubRenamer
 {
     public partial class MainForm
     {
-        private List<VsItem> VsList = new List<VsItem> { };
+        private readonly List<VsItem> _vsList = new();
         public MatchMode CurtMatchMode = MatchMode.Auto;
 
         // 匹配模式
@@ -39,19 +31,28 @@ namespace SubRenamer
             var subText = vsItem.Sub != null ? (showFullName ? vsItem.Sub : Path.GetFileName(vsItem.Sub)) : "";
 
             // 显示预览内容
-            if (PreviewCheckBox.Checked)
+            if (!PreviewCheckBox.Checked)
+                return new[]
+                {
+                    vsItem.MatchKey ?? "",
+                    videoText,
+                    subText,
+                    vsItem.GetStatusStr()
+                };
+            videoText = !AppSettings.RenameVideo ? subText : videoText;
+
+            subText = AppSettings.RenameVideo switch
             {
-                videoText = !AppSettings.RenameVideo ? subText : videoText;
+                false when (vsItem.Sub != null && subRenameDict.ContainsKey(vsItem.Sub)) => showFullName
+                    ? subRenameDict[vsItem.Sub]
+                    : Path.GetFileName(subRenameDict[vsItem.Sub]),
+                true when (vsItem.Video != null && subRenameDict.ContainsKey(vsItem.Video)) => showFullName
+                    ? subRenameDict[vsItem.Video]
+                    : Path.GetFileName(subRenameDict[vsItem.Video]),
+                _ => "(不修改)"
+            };
 
-                if (!AppSettings.RenameVideo && (vsItem.Sub != null && subRenameDict.ContainsKey(vsItem.Sub)))
-                    subText = showFullName ? subRenameDict[vsItem.Sub] : Path.GetFileName(subRenameDict[vsItem.Sub]);
-                else if (AppSettings.RenameVideo && (vsItem.Video != null && subRenameDict.ContainsKey(vsItem.Video)))
-                    subText = showFullName ? subRenameDict[vsItem.Video] : Path.GetFileName(subRenameDict[vsItem.Video]);
-                else
-                    subText = "(不修改)";
-            }
-
-            return new string[]
+            return new[]
             {
                 vsItem.MatchKey ?? "",
                 videoText,
@@ -70,21 +71,24 @@ namespace SubRenamer
             UpdateWinTitle();
 
             // 删除无效项
-            if (removeNull) VsList.RemoveAll(o => o.IsEmpty);
+            if (removeNull) _vsList.RemoveAll(o => o.IsEmpty);
             foreach (ListViewItem item in FileListUi.Items)
             {
-                if (item.Tag == null || !VsList.Contains(item.Tag))
+                if (item.Tag == null || !_vsList.Contains(item.Tag))
                     item.Remove();
             }
 
-            foreach (VsItem vsItem in VsList)
+            foreach (var vsItem in _vsList)
             {
                 var itemValues = GetItemValues(vsItem);
-                var findItem = FileListUi.Items.Cast<ListViewItem>().ToList().Find(o => o.Tag != null && o.Tag == vsItem);
+                var findItem = FileListUi.Items.Cast<ListViewItem>().ToList()
+                    .Find(o => o.Tag != null && o.Tag == vsItem);
                 if (findItem == null)
                 {
-                    var item = new ListViewItem(itemValues);
-                    item.Tag = vsItem;
+                    var item = new ListViewItem(itemValues)
+                    {
+                        Tag = vsItem
+                    };
                     FileListUi.Items.Add(item);
                 }
                 else
@@ -97,23 +101,23 @@ namespace SubRenamer
             if (PreviewCheckBox.Checked)
             {
                 var renameFileType = !AppSettings.RenameVideo ? "字幕" : "视频";
-                Video.Text = $"{renameFileType}文件名";
-                Subtitle.Text = "修改为";
+                Video.Text = $@"{renameFileType}文件名";
+                Subtitle.Text = @"修改为";
             }
             else
             {
-                Video.Text = "视频";
-                Subtitle.Text = "字幕";
+                Video.Text = @"视频";
+                Subtitle.Text = @"字幕";
             }
         }
 
-        private void UpdateFileListUiItem (ListViewItem item)
+        private void UpdateFileListUiItem(ListViewItem item)
         {
             if (item.Tag == null) return;
             var itemValues = GetItemValues((VsItem)item.Tag);
             if (item.SubItems[0].Text != itemValues[0])
                 item.SubItems[0].Text = itemValues[0];
-            for (int i = 1; i < itemValues.ToArray().Length; i++)
+            for (var i = 1; i < itemValues.ToArray().Length; i++)
             {
                 if (item.SubItems[i].Text != itemValues[i])
                     item.SubItems[i].Text = itemValues[i];
@@ -122,19 +126,21 @@ namespace SubRenamer
 
         // protected void MatchVideoSub() => Task.Factory.StartNew(() => _MatchVideoSub());
 
-        private List<FileInfo> GetFileListByVsList(AppFileType FileType)
+        private List<FileInfo> GetFileListByVsList(AppFileType fileType)
         {
-            if (FileType == AppFileType.Video)
-                return new List<FileInfo>(VsList.Where(o => o.Video != null).Select(o => o.VideoFileInfo));
-            if (FileType == AppFileType.Sub)
-                return new List<FileInfo>(VsList.Where(o => o.Sub != null).Select(o => o.SubFileInfo));
-            return null;
+            return fileType switch
+            {
+                AppFileType.Video => new List<FileInfo>(
+                    _vsList.Where(o => o.Video != null).Select(o => o.VideoFileInfo)),
+                AppFileType.Sub => new List<FileInfo>(_vsList.Where(o => o.Sub != null).Select(o => o.SubFileInfo)),
+                _ => null
+            };
         }
 
         // 匹配 视频 & 字幕 集数位置
         public void MatchVideoSub()
         {
-            if (VsList.Count <= 0) return;
+            if (_vsList.Count <= 0) return;
 
             // VsItem
             TryHandleVsListMatch(AppFileType.Video);
@@ -145,54 +151,57 @@ namespace SubRenamer
         }
 
         // 自动匹配配置
-        private int M_Auto_Begin = int.MinValue;
-        private string M_Auto_End = null;
-        
+        private int _mAutoBegin = int.MinValue;
+        private string _mAutoEnd;
+
         // 手动匹配配置
-        public string M_Manu_V_Begin = null;
-        public string M_Manu_V_End = null;
-        public string M_Manu_S_Begin = null;
-        public string M_Manu_S_End = null;
+        public string MManuVBegin = null;
+        public string MManuVEnd = null;
+        public string MManuSBegin = null;
+        public string MManuSEnd = null;
 
         // 正则表达式匹配配置
-        public Regex M_Regx_V = null;
-        public Regex M_Regx_S = null;
+        public Regex MRegxV = null;
+        public Regex MRegxS = null;
 
-        private void TryHandleVsListMatch(AppFileType FileType)
+        private void TryHandleVsListMatch(AppFileType fileType)
         {
             // 自动匹配数据归零
-            M_Auto_Begin = int.MinValue;
-            M_Auto_End = null;
+            _mAutoBegin = int.MinValue;
+            _mAutoEnd = null;
 
-            var FileList = GetFileListByVsList(FileType);
-            foreach (var file in FileList)
+            var fileList = GetFileListByVsList(fileType);
+            foreach (var file in fileList)
             {
-                string matchKey = GetMatchKeyByFileName(file.Name, FileType, FileList);
+                var matchKey = GetMatchKeyByFileName(file.Name, fileType, fileList);
 
-                var findVsItem = (matchKey != null) ? VsList.Find(o => o.MatchKey == matchKey) : null; // By matchKey
-                
-                if (findVsItem == null)
-                    findVsItem = VsList.Find(o =>
-                    {
-                        if (FileType == AppFileType.Video) return o.Video == file.FullName;
-                        if (FileType == AppFileType.Sub) return o.Sub == file.FullName;
-                        return false;
-                     }); // 通过文件名查找到的现成的 VsItem
-
-                // 仅更新数据
-                if (findVsItem != null)
+                var findVsItem = ((matchKey != null) ? _vsList.Find(o => o.MatchKey == matchKey) : null) ?? _vsList.Find(o =>
                 {
-                    if (FileType == AppFileType.Video)
+                    return fileType switch
                     {
-                        findVsItem.Video = file.FullName;
-                        findVsItem.Status = VsStatus.SubLack;
-                        VsList.RemoveAll(o => o != findVsItem && o.Video == findVsItem.Video); // 删除其他同类项目
-                    }
-                    else if (FileType == AppFileType.Sub)
+                        AppFileType.Video => o.Video == file.FullName,
+                        AppFileType.Sub => o.Sub == file.FullName,
+                        _ => false
+                    };
+                }); // By matchKey
+                // 通过文件名查找到的现成的 VsItem
+                // 仅更新数据
+                if (findVsItem == null) continue;
+                {
+                    switch (fileType)
                     {
-                        findVsItem.Sub = file.FullName;
-                        findVsItem.Status = VsStatus.VideoLack;
-                        VsList.RemoveAll(o => o != findVsItem && o.Sub == findVsItem.Sub); // 删除其他同类项目
+                        case AppFileType.Video:
+                            findVsItem.Video = file.FullName;
+                            findVsItem.Status = VsStatus.SubLack;
+                            _vsList.RemoveAll(o => o != findVsItem && o.Video == findVsItem.Video); // 删除其他同类项目
+                            break;
+                        case AppFileType.Sub:
+                            findVsItem.Sub = file.FullName;
+                            findVsItem.Status = VsStatus.VideoLack;
+                            _vsList.RemoveAll(o => o != findVsItem && o.Sub == findVsItem.Sub); // 删除其他同类项目
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(fileType), fileType, null);
                     }
 
                     if (findVsItem.Video != null && findVsItem.Sub != null)
@@ -206,29 +215,39 @@ namespace SubRenamer
         }
 
         // 获取匹配字符
-        private string GetMatchKeyByFileName(string fileName, AppFileType fileType, List<FileInfo> FileList)
+        private string GetMatchKeyByFileName(string fileName, AppFileType fileType, List<FileInfo> fileList)
         {
             string matchKey = null;
-            if (CurtMatchMode == MatchMode.Auto)
+            switch (CurtMatchMode)
             {
-                if (M_Auto_Begin == int.MinValue) M_Auto_Begin = GetEpisodePosByList(FileList); // 视频文件名集数开始位置
-                if (M_Auto_End == null) M_Auto_End = GetEndStrByList(FileList, M_Auto_Begin);
-                if (M_Auto_Begin > -1 && M_Auto_End != null)
-                    matchKey = GetEpisByFileName(fileName, M_Auto_Begin, M_Auto_End); // 匹配字符
-            }
-            else if (CurtMatchMode == MatchMode.Manu)
-            {
-                if (fileType == AppFileType.Video)
-                    matchKey = GetMatchKeyByBeginEndStr(fileName, M_Manu_V_Begin, M_Manu_V_End);
-                else if (fileType == AppFileType.Sub)
-                    matchKey = GetMatchKeyByBeginEndStr(fileName, M_Manu_S_Begin, M_Manu_S_End);
-            }
-            else if (CurtMatchMode == MatchMode.Regex)
-            {
-                if (fileType == AppFileType.Video && M_Regx_V != null)
-                    matchKey = GetMatchKeyByRegex(fileName, M_Regx_V);
-                else if (fileType == AppFileType.Sub && M_Regx_S != null)
-                    matchKey = GetMatchKeyByRegex(fileName, M_Regx_S);
+                case MatchMode.Auto:
+                {
+                    if (_mAutoBegin == int.MinValue) _mAutoBegin = GetEpisodePosByList(fileList); // 视频文件名集数开始位置
+                    _mAutoEnd ??= GetEndStrByList(fileList, _mAutoBegin);
+                    if (_mAutoBegin > -1 && _mAutoEnd != null)
+                        matchKey = GetEpisodeByFileName(fileName, _mAutoBegin, _mAutoEnd); // 匹配字符
+                    break;
+                }
+                case MatchMode.Manu when fileType == AppFileType.Video:
+                    matchKey = GetMatchKeyByBeginEndStr(fileName, MManuVBegin, MManuVEnd);
+                    break;
+                case MatchMode.Manu:
+                {
+                    if (fileType == AppFileType.Sub)
+                        matchKey = GetMatchKeyByBeginEndStr(fileName, MManuSBegin, MManuSEnd);
+                    break;
+                }
+                case MatchMode.Regex when fileType == AppFileType.Video && MRegxV != null:
+                    matchKey = GetMatchKeyByRegex(fileName, MRegxV);
+                    break;
+                case MatchMode.Regex:
+                {
+                    if (fileType == AppFileType.Sub && MRegxS != null)
+                        matchKey = GetMatchKeyByRegex(fileName, MRegxS);
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
 
             if (string.IsNullOrWhiteSpace(matchKey)) matchKey = null;
@@ -238,8 +257,7 @@ namespace SubRenamer
         public static string GetMatchKeyByRegex(string fileName, Regex regex)
         {
             if (regex == null || string.IsNullOrWhiteSpace(fileName)) return null;
-            if (regex.Match(fileName).Groups.Count < 2) return null;
-            return regex.Match(fileName).Groups[1].Value;
+            return regex.Match(fileName).Groups.Count < 2 ? null : regex.Match(fileName).Groups[1].Value;
         }
 
         public static string GetMatchKeyByBeginEndStr(string fileName, string start, string end)
@@ -248,8 +266,8 @@ namespace SubRenamer
                 return null;
             if (string.IsNullOrWhiteSpace(start) && string.IsNullOrWhiteSpace(end))
                 return null; // 前后字符都没有，直接返回 null
-            if (start == null) start = "";
-            if (end == null) end = "";
+            start ??= "";
+            end ??= "";
 
             fileName = fileName.Trim();
 
@@ -262,28 +280,23 @@ namespace SubRenamer
             return str;
         }
 
-        static string EscapeRegExp(string str)
+        private static string EscapeRegExp(string str)
         {
-            return Regex.Replace(str, @"[.*+?^${}()|[\]\\]", @"\$&");
+            return MyRegex().Replace(str, @"\$&");
         }
 
         #region 自动匹配模式
 
         // 获取集数
-        private string GetEpisByFileName(string fileName, int beginPos, string endStr)
+        private static string GetEpisodeByFileName(string fileName, int beginPos, string endStr)
         {
             if (string.IsNullOrWhiteSpace(fileName)) return null;
             if (beginPos <= -1) return null;
             if (beginPos >= fileName.Length) return null;
-            var str = fileName.Substring(beginPos);
+            var str = fileName[beginPos..];
 
-            var result = "";
+            var result = str.TakeWhile(t => t.ToString() != endStr).Aggregate("", (current, t) => current + t);
             // 通过 endStr 获得集数
-            for (int i = 0; i < str.Length; i++)
-            {
-                if (str[i].ToString() == endStr) break;
-                result += str[i];
-            }
 
             result = result.TrimStart('0'); // 开头为零的情况：替换 0001 为 1
             result = result.Trim(); // 去掉前后空格
@@ -292,17 +305,17 @@ namespace SubRenamer
         }
 
         // 遍历所有 list 中的项目，尝试得到集数开始位置
-        private int GetEpisodePosByList(List<FileInfo> list)
+        private int GetEpisodePosByList(IReadOnlyList<FileInfo> list)
         {
-            int aIndex = 0;
-            int bIndex = 1;
-            int beginPos = -1;
+            var aIndex = 0;
+            var bIndex = 1;
+            var beginPos = -1;
 
             while (true)
             {
                 try
                 {
-                    int result = GetEpisodePosByTwoStr(list[aIndex].Name, list[bIndex].Name);
+                    var result = GetEpisodePosByTwoStr(list[aIndex].Name, list[bIndex].Name);
                     beginPos = result;
                     break;
                 }
@@ -318,22 +331,20 @@ namespace SubRenamer
         }
 
         // 通过比对两个文件名中 数字 不同的部分来得到 集数 的位置
-        private int GetEpisodePosByTwoStr(string strA, string strB)
+        private static int GetEpisodePosByTwoStr(string strA, string strB)
         {
-            var numGrpA = Regex.Matches(strA.ToString(), @"(\d+)");
-            var numGrpB = Regex.Matches(strB.ToString(), @"(\d+)");
-            int beginPos = -1;
+            var numGrpA = MyRegex1().Matches(strA);
+            var numGrpB = MyRegex1().Matches(strB);
+            var beginPos = -1;
 
-            for (int i = 0; i < numGrpA.Count; i++)
+            for (var i = 0; i < numGrpA.Count; i++)
             {
-                var A = numGrpA[i];
-                var B = numGrpB[i];
-                if (A.Value != B.Value && A.Index == B.Index)
-                {
-                    // 若两个 val 不同，则记录位置
-                    beginPos = numGrpA[i].Index;
-                    break;
-                }
+                var a = numGrpA[i];
+                var b = numGrpB[i];
+                if (a.Value == b.Value || a.Index != b.Index) continue;
+                // 若两个 val 不同，则记录位置
+                beginPos = numGrpA[i].Index;
+                break;
             }
 
             if (beginPos == -1) throw new Exception("beginPos == -1");
@@ -342,40 +353,30 @@ namespace SubRenamer
         }
 
         // 获取终止字符
-        private string GetEndStrByList(List<FileInfo> list, int beginPos)
+        private static string GetEndStrByList(IReadOnlyCollection<FileInfo> list, int beginPos)
         {
-            if (list.Count() < 2) return null;
+            if (list.Count < 2) return null;
             if (beginPos <= -1) return null;
 
-            string fileName = list.Where(o => {
-                if (o.Name == null || o.Name.Length <= beginPos) return false;
-                return Regex.IsMatch(o.Name.Substring(beginPos)[0].ToString(), @"^\d+$");
-            }).ToList()[0].Name; // 获取开始即是数字的文件名
-            fileName = fileName.Substring(beginPos); // 从指定开始位置 (beginPos) 开始读取数字（忽略开始位置前的所有内容）
-            var grp = Regex.Matches(fileName, @"(\d+)");
+            var fileName = list.Where(o => o.Name.Length > beginPos && MyRegex2().IsMatch(o.Name[beginPos..][0].ToString())).ToList()[0].Name; // 获取开始即是数字的文件名
+            fileName = fileName[beginPos..]; // 从指定开始位置 (beginPos) 开始读取数字（忽略开始位置前的所有内容）
+            var grp = MyRegex1().Matches(fileName);
             if (grp.Count <= 0) return null;
-            Match firstNum = grp[0];
-            int afterNumStrIndex = firstNum.Index + firstNum.Length; // 数字后面的第一个字符 index
+            var firstNum = grp[0];
+            var afterNumStrIndex = firstNum.Index + firstNum.Length; // 数字后面的第一个字符 index
 
             // 不把特定字符（空格等）作为结束字符
-            string strTmp = fileName.Substring(afterNumStrIndex);
-            string result = null;
-            for (int i = 0; i < strTmp.Length; i++)
-            {
-                if (strTmp[i].ToString() != " ")
-                {
-                    result = strTmp[i].ToString();
-                    break;
-                }
-            }
-            return result;
+            var strTmp = fileName[afterNumStrIndex..];
+
+            return (from t in strTmp where t.ToString() != " " select t.ToString()).FirstOrDefault();
         }
+
         #endregion
 
-        protected void StartRename()
+        private void StartRename()
         {
             var subRenameDict = GetSubRenameDict();
-            if (subRenameDict.Count() <= 0) return;
+            if (!subRenameDict.Any()) return;
             SwitchPreview(true);
             Task.Factory.StartNew(() => _StartRename(subRenameDict));
         }
@@ -385,29 +386,15 @@ namespace SubRenamer
         {
             Program.Log($"[=============== 开始执行改名操作  ===============]");
 
-            string btnRawText = "";
-            Invoke((MethodInvoker)delegate {
+            var btnRawText = "";
+            Invoke((MethodInvoker)delegate
+            {
                 StartBtn.Enabled = false;
                 btnRawText = StartBtn.Text;
-                StartBtn.Text = "改名中...";
+                StartBtn.Text = @"改名中...";
             });
-            int renTotal = subRenameDict.Count();
-            int errTotal = 0;
-            void SetCurrentProgress(KeyValuePair<string, string> subRename, int index)
-            {
-                if (InvokeRequired)
-                {
-                    Invoke((MethodInvoker)delegate { SetCurrentProgress(subRename, index); });
-                    return;
-                }
+            var errTotal = 0;
 
-                double percentage = (index / (double)renTotal) * 100;
-                //td.Text = $"执行一键改名操作中，请稍后... ({index}/{renTotal})" + Environment.NewLine;
-                //td.Text += $"\"{Path.GetFileName(subRename.Key)}\"{Environment.NewLine}=> \"{Path.GetFileName(subRename.Value)}\"";
-                //td.ProgressBar.Value = int.Parse(Math.Truncate(percentage).ToString());
-            }
-
-            int i = 0;
             foreach (var subRename in subRenameDict)
             {
                 try
@@ -418,20 +405,17 @@ namespace SubRenamer
                 }
                 catch (Exception e)
                 {
-                    Program.Log("[错误]", $"[\"{subRename.Key}\"=>\"{subRename.Value}\"]{Environment.NewLine}  ==> {e.Message}");
+                    Program.Log("[错误]",
+                        $"[\"{subRename.Key}\"=>\"{subRename.Value}\"]{Environment.NewLine}  ==> {e.Message}");
                     errTotal++;
-                }
-                finally
-                {
-                    i++;
-                    // SetCurrentProgress(subRename, i);
                 }
             }
 
             if (errTotal > 0)
-                Process.Start(LOG_FILENAME);
+                Process.Start(LogFilename);
 
-            Invoke((MethodInvoker)delegate {
+            Invoke((MethodInvoker)delegate
+            {
                 StartBtn.Text = btnRawText;
                 StartBtn.Enabled = true;
             });
@@ -439,7 +423,7 @@ namespace SubRenamer
 
         private void _RenameOnce(KeyValuePair<string, string> subRename)
         {
-            var vsFile = VsList.Find(o => ((AppSettings.RenameVideo) ? o.Video : o.Sub) == subRename.Key);
+            var vsFile = _vsList.Find(o => ((AppSettings.RenameVideo) ? o.Video : o.Sub) == subRename.Key);
             if (vsFile == null) throw new Exception("找不到修改项");
             if (vsFile.Status == VsStatus.Done) return; // 无需再改名了
             if (vsFile.Status != VsStatus.Ready && vsFile.Status != VsStatus.Fatal) throw new Exception("当然状态无法修改");
@@ -463,7 +447,7 @@ namespace SubRenamer
             }
 
             // 执行备份
-            if (AppSettings.RawSubtitleBuckup)
+            if (AppSettings.RawSubtitleBackup)
             {
                 try
                 {
@@ -476,7 +460,7 @@ namespace SubRenamer
                 }
                 catch (Exception e)
                 {
-                    throw new Exception($"改名前备份发生错误 {e.GetType().FullName} {e.ToString()}");
+                    throw new Exception($"改名前备份发生错误 {e.GetType().FullName} {e}");
                 }
             }
 
@@ -499,20 +483,22 @@ namespace SubRenamer
             {
                 // 更名失败
                 vsFile.Status = VsStatus.Fatal;
-                throw new Exception($"改名发生错误 {e.GetType().FullName} {e.ToString()}");
+                throw new Exception($"改名发生错误 {e.GetType().FullName} {e}");
             }
         }
 
-        private void BackupFile(string filename)
+        private static void BackupFile(string filename)
         {
             if (!File.Exists(filename)) return;
-            var bkFolder = Path.Combine(Path.GetDirectoryName(filename), "SubBackup/");
+            var bkFolder = Path.Combine(Path.GetDirectoryName(filename) ?? string.Empty, "SubBackup/");
             if (!Directory.Exists(bkFolder)) Directory.CreateDirectory(bkFolder);
 
-            string bkDistFile = Path.Combine(bkFolder, Path.GetFileName(filename));
+            var bkDistFile = Path.Combine(bkFolder, Path.GetFileName(filename));
             if (File.Exists(bkDistFile)) // 解决文件重名问题
                 bkDistFile = Path.Combine(
-                    bkFolder, Path.GetFileNameWithoutExtension(filename) + $".{Program.GetNowDatetime()}{Path.GetExtension(filename)}"
+                    bkFolder,
+                    Path.GetFileNameWithoutExtension(filename) +
+                    $".{Program.GetNowDatetime()}{Path.GetExtension(filename)}"
                 );
 
             File.Copy(filename, bkDistFile, true);
@@ -521,30 +507,40 @@ namespace SubRenamer
         // 获取修改的字幕文件名 (原始完整路径->修改后完整路径)
         private Dictionary<string, string> GetSubRenameDict()
         {
-            var dict = new Dictionary<string, string>() { };
-            if (VsList.Count <= 0)
+            var dict = new Dictionary<string, string>();
+            if (_vsList.Count <= 0)
                 return dict;
 
-            foreach (var item in VsList)
+            foreach (var item in _vsList.Where(item => item.Video != null && item.Sub != null))
             {
-                if (item.Video == null || item.Sub == null) continue;
-
                 if (!AppSettings.RenameVideo)
                 {
-                    string videoName = Path.GetFileNameWithoutExtension(item.VideoFileInfo.Name); // 去掉后缀的视频文件名
-                    string subAfterFilename = videoName + item.SubFileInfo.Extension; // 修改的字幕文件名
-                    dict[item.SubFileInfo.FullName] = Path.Combine(item.VideoFileInfo.DirectoryName, subAfterFilename);
+                    var videoName = Path.GetFileNameWithoutExtension(item.VideoFileInfo.Name); // 去掉后缀的视频文件名
+                    var subAfterFilename = videoName + item.SubFileInfo.Extension; // 修改的字幕文件名
+                    if (item.VideoFileInfo.DirectoryName != null)
+                        dict[item.SubFileInfo.FullName] =
+                            Path.Combine(item.VideoFileInfo.DirectoryName, subAfterFilename);
                 }
                 else
-                { // 改视频文件名模式
-                    string subName = Path.GetFileNameWithoutExtension(item.SubFileInfo.Name);
-                    string videoAfterFilename = subName + item.VideoFileInfo.Extension; // 修改的字幕文件名
-                    dict[item.VideoFileInfo.FullName] = Path.Combine(item.VideoFileInfo.DirectoryName, videoAfterFilename);
+                {
+                    // 改视频文件名模式
+                    var subName = Path.GetFileNameWithoutExtension(item.SubFileInfo.Name);
+                    var videoAfterFilename = subName + item.VideoFileInfo.Extension; // 修改的字幕文件名
+                    if (item.VideoFileInfo.DirectoryName != null)
+                        dict[item.VideoFileInfo.FullName] =
+                            Path.Combine(item.VideoFileInfo.DirectoryName, videoAfterFilename);
                 }
             }
 
 
             return dict;
         }
+
+        [GeneratedRegex("[.*+?^${}()|[\\]\\\\]")]
+        private static partial Regex MyRegex();
+        [GeneratedRegex("(\\d+)")]
+        private static partial Regex MyRegex1();
+        [GeneratedRegex("^\\d+$")]
+        private static partial Regex MyRegex2();
     }
 }

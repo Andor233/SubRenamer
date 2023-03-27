@@ -1,69 +1,70 @@
 ﻿using SubRenamer.MatchModeEditor;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace SubRenamer
 {
     public partial class RuleEditor : Form
     {
-        private MainForm mainForm;
+        private readonly MainForm _mainForm;
 
         public RuleEditor(MainForm mainForm)
         {
-            this.mainForm = mainForm;
+            this._mainForm = mainForm;
             InitializeComponent();
         }
 
         private void RuleEditor_Load(object sender, EventArgs e)
         {
-            var curtMode = mainForm.CurtMatchMode;
-            if (curtMode == MainForm.MatchMode.Auto)
-                ModeBtn_Auto.Checked = true;
-            else if (curtMode == MainForm.MatchMode.Manu)
-                ModeBtn_Manu.Checked = true;
-            else if (curtMode == MainForm.MatchMode.Regex)
-                ModeBtn_Regex.Checked = true;
+            var curtMode = _mainForm.CurtMatchMode;
+            switch (curtMode)
+            {
+                case MainForm.MatchMode.Auto:
+                    ModeBtn_Auto.Checked = true;
+                    break;
+                case MainForm.MatchMode.Manu:
+                    ModeBtn_Manu.Checked = true;
+                    break;
+                case MainForm.MatchMode.Regex:
+                    ModeBtn_Regex.Checked = true;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
         }
 
         private void ModeBtn_Auto_CheckedChanged(object sender, EventArgs e)
         {
-            mainForm.CurtMatchMode = MainForm.MatchMode.Auto;
+            _mainForm.CurtMatchMode = MainForm.MatchMode.Auto;
         }
 
         private void ModeBtn_Manu_CheckedChanged(object sender, EventArgs e)
         {
-            mainForm.CurtMatchMode = MainForm.MatchMode.Manu;
+            _mainForm.CurtMatchMode = MainForm.MatchMode.Manu;
         }
 
         private void ModeBtn_Regex_CheckedChanged(object sender, EventArgs e)
         {
-            mainForm.CurtMatchMode = MainForm.MatchMode.Regex;
+            _mainForm.CurtMatchMode = MainForm.MatchMode.Regex;
         }
 
         private void EditBtn_Manu_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             ModeBtn_Manu.PerformClick();
-            var form = new ManuEditor(mainForm);
+            var form = new ManuEditor(_mainForm);
             form.ShowDialog();
         }
 
         private void EditBtn_Regex_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             ModeBtn_Regex.PerformClick();
-            var form = new RegexEditor(mainForm);
+            var form = new RegexEditor(_mainForm);
             form.ShowDialog();
         }
 
         private void RuleEditor_FormClosed(object sender, FormClosedEventArgs e)
         {
-            mainForm.MatchVideoSub();
+            _mainForm.MatchVideoSub();
         }
 
         private void Copyright_Click(object sender, EventArgs e) => Program.OpenAuthorBlog();

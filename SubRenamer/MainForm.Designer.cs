@@ -49,15 +49,15 @@
             this.R_OpenFileBtn = new System.Windows.Forms.Button();
             this.R_SettingBtn = new System.Windows.Forms.Button();
             this.MainContWrapPanel = new System.Windows.Forms.Panel();
-            this.TopMenu = new System.Windows.Forms.MainMenu(this.components);
-            this.TopMenu_File = new System.Windows.Forms.MenuItem();
-            this.TopMenu_OpenFileBtn = new System.Windows.Forms.MenuItem();
-            this.TopMenu_OpenFolderBtn = new System.Windows.Forms.MenuItem();
-            this.menuItem1 = new System.Windows.Forms.MenuItem();
-            this.TopMenu_ReMatch = new System.Windows.Forms.MenuItem();
-            this.TopMenu_ClearAll = new System.Windows.Forms.MenuItem();
-            this.TopMenu_Rule = new System.Windows.Forms.MenuItem();
-            this.TopMenu_Setting = new System.Windows.Forms.MenuItem();
+            this.TopMenu = new System.Windows.Forms.MenuStrip();
+            this.TopMenu_File = new System.Windows.Forms.ToolStripMenuItem();
+            this.TopMenu_OpenFileBtn = new System.Windows.Forms.ToolStripMenuItem();
+            this.TopMenu_OpenFolderBtn = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.TopMenu_ReMatch = new System.Windows.Forms.ToolStripMenuItem();
+            this.TopMenu_ClearAll = new System.Windows.Forms.ToolStripMenuItem();
+            this.TopMenu_Rule = new System.Windows.Forms.ToolStripMenuItem();
+            this.TopMenu_Setting = new System.Windows.Forms.ToolStripMenuItem();
             this.MainToolTip = new System.Windows.Forms.ToolTip(this.components);
             this.MainContPanel.SuspendLayout();
             this.tableLayoutPanel2.SuspendLayout();
@@ -318,60 +318,49 @@
             // 
             // TopMenu
             // 
-            this.TopMenu.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
-            this.TopMenu_File,
-            this.TopMenu_Rule,
-            this.TopMenu_Setting});
             // 
             // TopMenu_File
             // 
-            this.TopMenu_File.Index = 0;
-            this.TopMenu_File.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
+            this.TopMenu_File.DropDownItems.AddRange(new System.Windows.Forms.ToolStripMenuItem [] {
             this.TopMenu_OpenFileBtn,
             this.TopMenu_OpenFolderBtn,
             this.menuItem1,
             this.TopMenu_ReMatch,
             this.TopMenu_ClearAll});
             this.TopMenu_File.Text = "文件";
+            this.TopMenu.Items.Add(this.TopMenu_File);
             // 
             // TopMenu_OpenFileBtn
             // 
-            this.TopMenu_OpenFileBtn.Index = 0;
             this.TopMenu_OpenFileBtn.Text = "导入文件...";
             this.TopMenu_OpenFileBtn.Click += new System.EventHandler(this.TopMenu_OpenFileBtn_Click);
             // 
             // TopMenu_OpenFolderBtn
             // 
-            this.TopMenu_OpenFolderBtn.Index = 1;
             this.TopMenu_OpenFolderBtn.Text = "导入文件夹...";
             this.TopMenu_OpenFolderBtn.Click += new System.EventHandler(this.TopMenu_OpenFolderBtn_Click);
             // 
             // menuItem1
             // 
-            this.menuItem1.Index = 2;
             this.menuItem1.Text = "-";
             // 
             // TopMenu_ReMatch
             // 
-            this.TopMenu_ReMatch.Index = 3;
             this.TopMenu_ReMatch.Text = "重新匹配";
             this.TopMenu_ReMatch.Click += new System.EventHandler(this.TopMenu_ReMatch_Click);
             // 
             // TopMenu_ClearAll
             // 
-            this.TopMenu_ClearAll.Index = 4;
             this.TopMenu_ClearAll.Text = "清空列表";
             this.TopMenu_ClearAll.Click += new System.EventHandler(this.TopMenu_ClearAll_Click);
             // 
             // TopMenu_Rule
             // 
-            this.TopMenu_Rule.Index = 1;
             this.TopMenu_Rule.Text = "规则";
             this.TopMenu_Rule.Click += new System.EventHandler(this.TopMenu_Rule_Click);
             // 
             // TopMenu_Setting
             // 
-            this.TopMenu_Setting.Index = 2;
             this.TopMenu_Setting.Text = "设置";
             this.TopMenu_Setting.Click += new System.EventHandler(this.TopMenu_Setting_Click);
             // 
@@ -384,7 +373,7 @@
             this.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(7);
-            this.Menu = this.TopMenu;
+            // this.Menu = this.TopMenu;
             this.MinimumSize = new System.Drawing.Size(1500, 882);
             this.Name = "MainForm";
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
@@ -412,11 +401,11 @@
         private System.Windows.Forms.TableLayoutPanel MainContPanel;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
         private System.Windows.Forms.Panel MainContWrapPanel;
-        private System.Windows.Forms.MainMenu TopMenu;
-        private System.Windows.Forms.MenuItem TopMenu_File;
-        private System.Windows.Forms.MenuItem TopMenu_Setting;
-        private System.Windows.Forms.MenuItem TopMenu_OpenFileBtn;
-        private System.Windows.Forms.MenuItem TopMenu_OpenFolderBtn;
+        private System.Windows.Forms.MenuStrip  TopMenu;
+        private System.Windows.Forms.ToolStripMenuItem  TopMenu_File;
+        private System.Windows.Forms.ToolStripMenuItem  TopMenu_Setting;
+        private System.Windows.Forms.ToolStripMenuItem  TopMenu_OpenFileBtn;
+        private System.Windows.Forms.ToolStripMenuItem  TopMenu_OpenFolderBtn;
         private System.Windows.Forms.Button R_OpenFolderBtn;
         private System.Windows.Forms.Button R_OpenFileBtn;
         private System.Windows.Forms.Button R_EditBtn;
@@ -426,10 +415,10 @@
         private System.Windows.Forms.Button R_RuleBtn;
         private System.Windows.Forms.Button R_SettingBtn;
         private System.Windows.Forms.ToolTip MainToolTip;
-        private System.Windows.Forms.MenuItem TopMenu_Rule;
-        private System.Windows.Forms.MenuItem menuItem1;
-        private System.Windows.Forms.MenuItem TopMenu_ReMatch;
-        private System.Windows.Forms.MenuItem TopMenu_ClearAll;
+        private System.Windows.Forms.ToolStripMenuItem  TopMenu_Rule;
+        private System.Windows.Forms.ToolStripMenuItem  menuItem1;
+        private System.Windows.Forms.ToolStripMenuItem  TopMenu_ReMatch;
+        private System.Windows.Forms.ToolStripMenuItem  TopMenu_ClearAll;
     }
 }
 

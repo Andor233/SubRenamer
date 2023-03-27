@@ -1,12 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.WindowsAPICodePack.Dialogs;
 using static SubRenamer.Global;
@@ -15,15 +8,15 @@ namespace SubRenamer
 {
     public partial class VsItemEditor : Form
     {
-        private readonly MainForm mainForm;
-        private readonly List<VsItem> vsList;
-        private VsItem vsItem;
+        private readonly MainForm _mainForm;
+        private readonly List<VsItem> _vsList;
+        private VsItem _vsItem;
 
         public VsItemEditor(MainForm mainForm, List<VsItem> vsList, VsItem vsItem)
         {
-            this.mainForm = mainForm;
-            this.vsList = vsList;
-            this.vsItem = vsItem;
+            _mainForm = mainForm;
+            _vsList = vsList;
+            _vsItem = vsItem;
             InitializeComponent();
 
             MainToolTip.SetToolTip(PrevItemBtn, "上一个项目");
@@ -43,22 +36,22 @@ namespace SubRenamer
 
         private void RefreshByVsItem()
         {
-            if (vsItem == null) return;
-            MatchKey_TextBox.Text = vsItem.MatchKey ?? "";
+            if (_vsItem == null) return;
+            MatchKey_TextBox.Text = _vsItem.MatchKey ?? "";
 
-            Video_TextBox.Text = (vsItem.Video != null) ? vsItem.Video : "";
+            Video_TextBox.Text = _vsItem.Video ?? "";
             Video_TextBox.SelectionStart = Video_TextBox.Text.Length;
 
-            Sub_TextBox.Text = (vsItem.Sub != null) ? vsItem.Sub : "";
+            Sub_TextBox.Text = _vsItem.Sub ?? "";
             Sub_TextBox.SelectionStart = Sub_TextBox.Text.Length;
 
-            PageNum.Text = $"{vsList.IndexOf(vsItem) + 1}/{vsList.Count}";
+            PageNum.Text = $@"{_vsList.IndexOf(_vsItem) + 1}/{_vsList.Count}";
         }
 
         private void MatchKey_TextBox_TextChanged(object sender, EventArgs e)
         {
             if (string.IsNullOrWhiteSpace(MatchKey_TextBox.Text)) return;
-            vsItem.MatchKey = MatchKey_TextBox.Text.Trim();
+            _vsItem.MatchKey = MatchKey_TextBox.Text.Trim();
             UpdateStatus();
         }
 
@@ -68,9 +61,10 @@ namespace SubRenamer
             if (filename != null)
             {
                 Video_TextBox.Text = filename;
-                vsItem.Video = !string.IsNullOrWhiteSpace(filename) ? filename : null;
+                _vsItem.Video = !string.IsNullOrWhiteSpace(filename) ? filename : null;
                 UpdateStatus();
             }
+
             Video_TextBox.SelectionStart = Video_TextBox.Text.Length;
         }
 
@@ -80,78 +74,64 @@ namespace SubRenamer
             if (filename != null)
             {
                 Sub_TextBox.Text = filename;
-                vsItem.Sub = !string.IsNullOrWhiteSpace(filename) ? filename : null;
+                _vsItem.Sub = !string.IsNullOrWhiteSpace(filename) ? filename : null;
                 UpdateStatus();
             }
+
             Sub_TextBox.SelectionStart = Sub_TextBox.Text.Length;
         }
 
-        private string OpenFileSelectDialog(List<string> exts)
+        private static string OpenFileSelectDialog(IEnumerable<string> exts)
         {
-            using (var fbd = new CommonOpenFileDialog()
-            {
-            })
-            {
-                fbd.Filters.Add(new CommonFileDialogFilter("媒体文件", string.Join(";", exts)));
-                var result = fbd.ShowDialog();
+            using var fbd = new CommonOpenFileDialog();
+            fbd.Filters.Add(new CommonFileDialogFilter("媒体文件", string.Join(";", exts)));
+            var result = fbd.ShowDialog();
 
-                if (result == CommonFileDialogResult.Ok && !string.IsNullOrWhiteSpace(fbd.FileName))
-                {
-                    return fbd.FileName;
-                }
+            if (result == CommonFileDialogResult.Ok && !string.IsNullOrWhiteSpace(fbd.FileName))
+            {
+                return fbd.FileName;
             }
+
             return null;
         }
 
-        /*private void Save()
-        {
-            try
-            {
-                _Save();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message + Environment.NewLine + ex.StackTrace, "保存失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }*/
-
         private void UpdateStatus()
         {
-            if (string.IsNullOrWhiteSpace(vsItem.MatchKey))
-                vsItem.Status = VsStatus.Unmatched;
+            if (string.IsNullOrWhiteSpace(_vsItem.MatchKey))
+                _vsItem.Status = VsStatus.Unmatched;
 
-            if (vsItem.Video != null)
-                vsItem.Status = VsStatus.SubLack;
+            if (_vsItem.Video != null)
+                _vsItem.Status = VsStatus.SubLack;
 
-            if (vsItem.Sub != null)
-                vsItem.Status = VsStatus.VideoLack;
+            if (_vsItem.Sub != null)
+                _vsItem.Status = VsStatus.VideoLack;
 
-            if (vsItem.Video != null && vsItem.Sub != null)
-                vsItem.Status = VsStatus.Ready;
+            if (_vsItem.Video != null && _vsItem.Sub != null)
+                _vsItem.Status = VsStatus.Ready;
         }
 
         private void Video_ClearBtn_Click(object sender, EventArgs e)
         {
-            vsItem.Video = null;
+            _vsItem.Video = null;
             Video_TextBox.Text = "";
         }
 
         private void Sub_ClearBtn_Click(object sender, EventArgs e)
         {
-            vsItem.Sub = null;
+            _vsItem.Sub = null;
             Sub_TextBox.Text = "";
         }
 
         private void AddItemBtn_Click(object sender, EventArgs e)
         {
             CreateItem();
-            mainForm.RefreshFileListUi(removeNull: false);
+            _mainForm.RefreshFileListUi(removeNull: false);
         }
 
         private void CreateItem()
         {
-            vsItem = new VsItem();
-            vsList.Add(vsItem);
+            _vsItem = new VsItem();
+            _vsList.Add(_vsItem);
             RefreshByVsItem();
         }
 
@@ -159,49 +139,48 @@ namespace SubRenamer
         {
             if (AppSettings.ListItemRemovePrompt)
             {
-                var result = MessageBox.Show($"你要删除当前编辑的项目吗？", "删除编辑项", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                var result = MessageBox.Show($@"你要删除当前编辑的项目吗？", @"删除编辑项", MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
                 if (result == DialogResult.No) return;
             }
 
-            int pos = vsList.IndexOf(vsItem);
+            var pos = _vsList.IndexOf(_vsItem);
             if (pos < 0) return;
-            vsList.Remove(vsItem);
-            if (vsList.Count > 0)
+            _vsList.Remove(_vsItem);
+            if (_vsList.Count > 0)
             {
-                if (pos < vsList.Count)
-                    vsItem = vsList[pos];
-                else
-                    vsItem = vsList[pos-1];
+                _vsItem = pos < _vsList.Count ? _vsList[pos] : _vsList[pos - 1];
                 RefreshByVsItem();
             }
             else
             {
                 CreateItem();
             }
-            mainForm.RefreshFileListUi(removeNull: false);
+
+            _mainForm.RefreshFileListUi(removeNull: false);
         }
 
         private void PrevItemBtn_Click(object sender, EventArgs e)
         {
-            int pos = vsList.IndexOf(vsItem) - 1;
+            var pos = _vsList.IndexOf(_vsItem) - 1;
             if (pos < 0) return;
-            mainForm.RefreshFileListUi(removeNull: false);
-            vsItem = vsList[pos];
+            _mainForm.RefreshFileListUi(removeNull: false);
+            _vsItem = _vsList[pos];
             RefreshByVsItem();
         }
 
         private void NextItemBtn_Click(object sender, EventArgs e)
         {
-            int pos = vsList.IndexOf(vsItem) + 1;
-            if (pos >= vsList.Count) return;
-            mainForm.RefreshFileListUi(removeNull: false);
-            vsItem = vsList[pos];
+            var pos = _vsList.IndexOf(_vsItem) + 1;
+            if (pos >= _vsList.Count) return;
+            _mainForm.RefreshFileListUi(removeNull: false);
+            _vsItem = _vsList[pos];
             RefreshByVsItem();
         }
 
         private void VsItemEditor_FormClosed(object sender, FormClosedEventArgs e)
         {
-            mainForm.RefreshFileListUi();
+            _mainForm.RefreshFileListUi();
         }
     }
 }

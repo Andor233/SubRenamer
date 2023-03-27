@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SubRenamer
 {
@@ -71,7 +67,8 @@ namespace SubRenamer
 
         public string GetStatusStr()
         {
-            var transDict = new Dictionary<VsStatus, string> {
+            var transDict = new Dictionary<VsStatus, string>
+            {
                 { VsStatus.Done, "成功" },
                 { VsStatus.Fatal, "失败" },
                 { VsStatus.Ready, "已匹配" },
@@ -83,6 +80,7 @@ namespace SubRenamer
             return transDict[this.Status];
         }
 
-        public bool IsEmpty => string.IsNullOrEmpty(MatchKey) && string.IsNullOrEmpty(Video) && string.IsNullOrEmpty(Sub);
+        public bool IsEmpty =>
+            string.IsNullOrEmpty(MatchKey) && string.IsNullOrEmpty(Video) && string.IsNullOrEmpty(Sub);
     }
 }

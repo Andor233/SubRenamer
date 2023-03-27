@@ -1,16 +1,13 @@
-﻿using Microsoft.WindowsAPICodePack.Dialogs;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using static SubRenamer.Global;
+using Microsoft.WindowsAPICodePack.Dialogs;
 
 namespace SubRenamer.Lib
 {
-    class Utils
+    internal abstract class Utils
     {
         /// <summary>
         /// 输入对话框
@@ -20,7 +17,7 @@ namespace SubRenamer.Lib
         /// <returns></returns>
         public static string InputDialog(string text, string caption)
         {
-            Form prompt = new Form()
+            var prompt = new Form
             {
                 Width = 500,
                 Height = 150,
@@ -29,9 +26,10 @@ namespace SubRenamer.Lib
                 TopMost = true,
                 StartPosition = FormStartPosition.CenterScreen
             };
-            Label textLabel = new Label() { Left = 20, Top = 20, Text = text, Width = 460 };
-            TextBox textBox = new TextBox() { Left = 20, Top = 40, Width = 460 };
-            Button confirmation = new Button() { Text = "完成", Left = 360, Width = 120, Top = 70, DialogResult = DialogResult.OK };
+            var textLabel = new Label { Left = 20, Top = 20, Text = text, Width = 460 };
+            var textBox = new TextBox { Left = 20, Top = 40, Width = 460 };
+            var confirmation = new Button
+                { Text = @"完成", Left = 360, Width = 120, Top = 70, DialogResult = DialogResult.OK };
             confirmation.Click += (sender, e) => { prompt.Close(); };
             prompt.Controls.Add(textBox);
             prompt.Controls.Add(confirmation);
@@ -41,25 +39,29 @@ namespace SubRenamer.Lib
             return prompt.ShowDialog() == DialogResult.OK ? textBox.Text : "";
         }
 
-        public static void OpenFile(AppFileType FileType, Action<string, AppFileType> opened)
+        public static void OpenFile(AppFileType fileType, Action<string, AppFileType> opened)
         {
-            using (var fbd = new CommonOpenFileDialog())
+            using var fbd = new CommonOpenFileDialog();
+            switch (fileType)
             {
-                if (FileType == AppFileType.Video)
+                case AppFileType.Video:
                     fbd.Filters.Add(new CommonFileDialogFilter("视频文件", string.Join(";", VideoExts.ToList())));
-                else if (FileType == AppFileType.Sub)
+                    break;
+                case AppFileType.Sub:
                     fbd.Filters.Add(new CommonFileDialogFilter("字幕文件", string.Join(";", SubExts.ToList())));
-
-                fbd.Filters.Add(new CommonFileDialogFilter("视频或字幕文件", string.Join(";", VideoExts.Concat(SubExts).ToList())));
-                fbd.Filters.Add(new CommonFileDialogFilter("任何类型", "*.*"));
-                var result = fbd.ShowDialog();
-
-                if (result == CommonFileDialogResult.Ok && !string.IsNullOrWhiteSpace(fbd.FileName))
-                {
-                    var fileName = Path.GetFileName(fbd.FileName.Trim());
-                    opened(fileName, FileType);
-                }
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(fileType), fileType, null);
             }
+
+            fbd.Filters.Add(new CommonFileDialogFilter("视频或字幕文件",
+                string.Join(";", VideoExts.Concat(SubExts).ToList())));
+            fbd.Filters.Add(new CommonFileDialogFilter("任何类型", "*.*"));
+            var result = fbd.ShowDialog();
+
+            if (result != CommonFileDialogResult.Ok || string.IsNullOrWhiteSpace(fbd.FileName)) return;
+            var fileName = Path.GetFileName(fbd.FileName.Trim());
+            opened(fileName, fileType);
         }
     }
 }
